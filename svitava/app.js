@@ -100,3 +100,49 @@ appointmentToggle.addEventListener('click', () => {
 appointmentClose.addEventListener('click', () => closeAppointment(true));
 document.addEventListener('keydown', event => {if (event.key === 'Escape' && !appointmentCard.hidden) closeAppointment(true);});
 document.addEventListener('pointerdown', event => {if (!appointmentCard.hidden && !event.target.closest('.appointment-widget')) closeAppointment();});
+
+// Reference: první otevřená, čas běží pouze ve výřezu a bez interakce.
+const referenceSection = document.querySelector('#reference');
+const referencePanels = [...document.querySelectorAll('.reference-panel')];
+const referencePause = document.querySelector('#reference-pause');
+let referenceIndex = 0, referenceElapsed = 0, referenceLast = 0, referenceFrame = 0;
+let referencePaused = reduced.matches, referenceVisible = false, referenceHover = false;
+const referenceDuration = 8000;
+function openReference(index) {
+  referenceIndex = (index + referencePanels.length) % referencePanels.length;
+  referenceElapsed = 0;
+  referencePanels.forEach((panel, i) => {
+    const active = i === referenceIndex;
+    panel.classList.toggle('is-open', active);
+    panel.querySelector('.reference-trigger').setAttribute('aria-expanded', String(active));
+    panel.querySelector('.reference-collapse').inert = !active;
+    panel.style.setProperty('--reference-progress', '0');
+  });
+  document.querySelector('#reference-count').textContent = `0${referenceIndex + 1} / 03`;
+}
+function referenceTick(now) {
+  referenceElapsed += Math.min(now - referenceLast, 100);
+  referenceLast = now;
+  if (referenceElapsed >= referenceDuration) openReference(referenceIndex + 1);
+  referencePanels[referenceIndex].style.setProperty('--reference-progress', String(referenceElapsed / referenceDuration));
+  referenceFrame = requestAnimationFrame(referenceTick);
+}
+function syncReferences() {
+  cancelAnimationFrame(referenceFrame);
+  referencePause.textContent = referencePaused ? 'Spustit ▶' : 'Pozastavit Ⅱ';
+  referencePause.setAttribute('aria-label', referencePaused ? 'Spustit přepínání referencí' : 'Pozastavit přepínání referencí');
+  if (!referencePaused && !reduced.matches && referenceVisible && !referenceHover && !document.hidden && !referenceSection.contains(document.activeElement)) {
+    referenceLast = performance.now();
+    referenceFrame = requestAnimationFrame(referenceTick);
+  }
+}
+referencePanels.forEach((panel, i) => panel.querySelector('.reference-trigger').addEventListener('click', () => openReference(i)));
+referencePause.addEventListener('click', () => {referencePaused = !referencePaused; syncReferences();});
+referenceSection.addEventListener('mouseenter', () => {referenceHover = matchMedia('(hover: hover) and (pointer: fine)').matches; syncReferences();});
+referenceSection.addEventListener('mouseleave', () => {referenceHover = false; syncReferences();});
+referenceSection.addEventListener('focusin', syncReferences);
+referenceSection.addEventListener('focusout', () => requestAnimationFrame(syncReferences));
+document.addEventListener('visibilitychange', syncReferences);
+reduced.addEventListener('change', () => {referencePaused = reduced.matches; syncReferences();});
+if ('IntersectionObserver' in window) new IntersectionObserver(entries => {referenceVisible = entries[0].isIntersecting; syncReferences();}, {threshold:.2}).observe(referenceSection);
+syncReferences();

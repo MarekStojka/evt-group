@@ -91,3 +91,21 @@ editorialHero.addEventListener('pointermove', event => {
   editorialHero.style.setProperty('--hero-y', `${(event.clientY - bounds.top - bounds.height / 2) * .008}px`);
 });
 editorialHero.addEventListener('pointerleave', () => {editorialHero.style.setProperty('--hero-x', '0px'); editorialHero.style.setProperty('--hero-y', '0px');});
+
+const appointmentToggle = document.querySelector('#appointment-toggle');
+const appointmentCard = document.querySelector('#appointment-card');
+const appointmentClose = document.querySelector('#appointment-close');
+function closeAppointment(restoreFocus = false) {
+  appointmentCard.hidden = true;
+  appointmentToggle.setAttribute('aria-expanded', 'false');
+  if (restoreFocus) appointmentToggle.focus();
+}
+appointmentToggle.addEventListener('click', () => {
+  const opening = appointmentCard.hidden;
+  appointmentCard.hidden = !opening;
+  appointmentToggle.setAttribute('aria-expanded', String(opening));
+  if (opening) appointmentClose.focus();
+});
+appointmentClose.addEventListener('click', () => closeAppointment(true));
+document.addEventListener('keydown', event => {if (event.key === 'Escape' && !appointmentCard.hidden) closeAppointment(true);});
+document.addEventListener('pointerdown', event => {if (!appointmentCard.hidden && !event.target.closest('.appointment-widget')) closeAppointment();});

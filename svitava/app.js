@@ -5,6 +5,7 @@ const pause = document.querySelector('#pause');
 function showSlide(index) {
   current = (index + slides.length) % slides.length;
   slides.forEach((slide, i) => { slide.classList.toggle('active', i === current); slide.setAttribute('aria-hidden', String(i !== current)); });
+  document.querySelector('#hero-preview-image').src = slides[(current + 1) % slides.length].getAttribute('src');
   document.querySelector('#slide-count').textContent = `0${current + 1} / 03`;
   document.querySelector('.progress i').style.width = `${(current + 1) / slides.length * 100}%`;
 }
@@ -37,7 +38,7 @@ function displayPhoto(index) {
   document.querySelector('#photo-caption').textContent = source.alt;
   document.querySelector('#photo-count').textContent = `0${photoIndex + 1} / 03`;
 }
-photos.forEach((button, i) => button.addEventListener('click', () => { displayPhoto(i); dialog.showModal(); }));
+photos.forEach((button, i) => button.addEventListener('click', () => { if (!button.classList.contains('is-active')) { moveGallery(i); return; } displayPhoto(i); dialog.showModal(); }));
 document.querySelector('#close-photo').addEventListener('click', () => dialog.close());
 document.querySelector('#photo-prev').addEventListener('click', () => displayPhoto(photoIndex - 1));
 document.querySelector('#photo-next').addEventListener('click', () => displayPhoto(photoIndex + 1));
@@ -51,8 +52,8 @@ const galleryPause = document.querySelector('#gallery-pause');
 let galleryIndex = 0, galleryTimer, galleryPaused = reduced.matches, galleryVisible = false;
 function moveGallery(index) {
   galleryIndex = (index + galleryCards.length) % galleryCards.length;
-  const first = galleryCards[0].offsetLeft;
-  galleryTrack.scrollTo({left: galleryCards[galleryIndex].offsetLeft - first, behavior: reduced.matches ? 'instant' : 'smooth'});
+  galleryCards.forEach((card, i) => {card.classList.toggle('is-active', i === galleryIndex); card.setAttribute('aria-expanded', String(i === galleryIndex));});
+  document.querySelector('#gallery-count').textContent = `0${galleryIndex + 1} / 03`;
 }
 function scheduleGallery() {
   clearInterval(galleryTimer);
@@ -63,11 +64,6 @@ function syncGalleryPause() {
   galleryPause.setAttribute('aria-label', galleryPaused ? 'Spustit posun galerie' : 'Pozastavit posun galerie');
   scheduleGallery();
 }
-galleryTrack.addEventListener('scroll', () => {
-  const first = galleryCards[0].offsetLeft;
-  galleryIndex = galleryCards.reduce((best, card, i) => Math.abs(card.offsetLeft - first - galleryTrack.scrollLeft) < Math.abs(galleryCards[best].offsetLeft - first - galleryTrack.scrollLeft) ? i : best, 0);
-  document.querySelector('#gallery-count').textContent = `0${galleryIndex + 1} / 03`;
-}, {passive:true});
 document.querySelector('#gallery-prev').addEventListener('click', () => moveGallery(galleryIndex - 1));
 document.querySelector('#gallery-next').addEventListener('click', () => moveGallery(galleryIndex + 1));
 galleryPause.addEventListener('click', () => {galleryPaused = !galleryPaused; syncGalleryPause();});
@@ -81,3 +77,17 @@ dialog.addEventListener('close', scheduleGallery);
 reduced.addEventListener('change', () => {galleryPaused = reduced.matches; syncGalleryPause();});
 if ('IntersectionObserver' in window) new IntersectionObserver(entries => {galleryVisible = entries[0].isIntersecting; scheduleGallery();}, {threshold:.25}).observe(galleryTrack);
 syncGalleryPause();
+
+// Survol uniquement à la souris ; sur écran tactile, toucher pour déplier.
+galleryCards.forEach((card, i) => card.addEventListener('mouseenter', () => {if (matchMedia('(hover: hover) and (pointer: fine)').matches) moveGallery(i);}));
+
+// Jemný prostorový pohyb fotografie, bez pohybu na dotykových zařízeních.
+const editorialHero = document.querySelector('.hero-editorial');
+document.querySelector('#hero-preview').addEventListener('click', () => {showSlide(current + 1); schedule();});
+editorialHero.addEventListener('pointermove', event => {
+  if (reduced.matches || event.pointerType !== 'mouse') return;
+  const bounds = editorialHero.getBoundingClientRect();
+  editorialHero.style.setProperty('--hero-x', `${(event.clientX - bounds.left - bounds.width / 2) * .008}px`);
+  editorialHero.style.setProperty('--hero-y', `${(event.clientY - bounds.top - bounds.height / 2) * .008}px`);
+});
+editorialHero.addEventListener('pointerleave', () => {editorialHero.style.setProperty('--hero-x', '0px'); editorialHero.style.setProperty('--hero-y', '0px');});

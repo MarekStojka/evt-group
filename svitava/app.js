@@ -1,26 +1,28 @@
 const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-const slides = [...document.querySelectorAll('.slide')];
-let current = 0, timer, paused = reduced.matches;
-const pause = document.querySelector('#pause');
-function showSlide(index) {
-  current = (index + slides.length) % slides.length;
-  slides.forEach((slide, i) => { slide.classList.toggle('active', i === current); slide.setAttribute('aria-hidden', String(i !== current)); });
-  document.querySelector('#hero-preview-image').src = slides[(current + 1) % slides.length].getAttribute('src');
-  document.querySelector('#slide-count').textContent = `0${current + 1} / 03`;
-  document.querySelector('.progress i').style.width = `${(current + 1) / slides.length * 100}%`;
+const foldPanels = [...document.querySelectorAll('.fold-panel')];
+let foldIndex = 0;
+function openFold(index) {
+  foldIndex = (index + foldPanels.length) % foldPanels.length;
+  foldPanels.forEach((panel, i) => {
+    const active = i === foldIndex;
+    panel.classList.toggle('is-open', active);
+    panel.querySelector('.fold-trigger').setAttribute('aria-expanded', String(active));
+    panel.querySelector('.fold-content').inert = !active;
+  });
+  document.querySelector('#fold-count').textContent = `0${foldIndex + 1} / 03`;
 }
-function schedule() { clearInterval(timer); if (!paused && !document.hidden) timer = setInterval(() => showSlide(current + 1), 6500); }
-function syncPause() { pause.textContent = paused ? '▶' : 'Ⅱ'; pause.setAttribute('aria-label', paused ? 'Spustit carousel' : 'Pozastavit carousel'); schedule(); }
-document.querySelector('#prev').addEventListener('click', () => { showSlide(current - 1); schedule(); });
-document.querySelector('#next').addEventListener('click', () => { showSlide(current + 1); schedule(); });
-pause.addEventListener('click', () => { paused = !paused; syncPause(); });
-document.addEventListener('visibilitychange', schedule);
-document.querySelector('.hero').addEventListener('mouseenter', () => clearInterval(timer));
-document.querySelector('.hero').addEventListener('mouseleave', schedule);
-document.querySelector('.hero').addEventListener('focusin', () => clearInterval(timer));
-document.querySelector('.hero').addEventListener('focusout', schedule);
-reduced.addEventListener('change', () => { paused = reduced.matches; syncPause(); });
-showSlide(0); syncPause();
+foldPanels.forEach((panel, i) => {
+  panel.querySelector('.fold-trigger').addEventListener('click', () => openFold(i));
+  panel.addEventListener('mouseenter', () => {if (matchMedia('(hover: hover) and (pointer: fine)').matches && !document.querySelector('.fold-panels').contains(document.activeElement)) openFold(i);});
+  panel.querySelector('.fold-trigger').addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    openFold(event.key === 'Home' ? 0 : event.key === 'End' ? foldPanels.length - 1 : foldIndex + (event.key === 'ArrowRight' ? 1 : -1));
+    foldPanels[foldIndex].querySelector('.fold-trigger').focus();
+  });
+});
+document.querySelector('#fold-prev').addEventListener('click', () => openFold(foldIndex - 1));
+document.querySelector('#fold-next').addEventListener('click', () => openFold(foldIndex + 1));
 const menu = document.querySelector('.menu'), nav = document.querySelector('nav');
 menu.addEventListener('click', () => { const open = nav.classList.toggle('open'); menu.setAttribute('aria-expanded', String(open)); });
 nav.querySelectorAll('a').forEach(link => link.addEventListener('click', () => { nav.classList.remove('open'); menu.setAttribute('aria-expanded', 'false'); }));
@@ -80,17 +82,6 @@ syncGalleryPause();
 
 // Survol uniquement à la souris ; sur écran tactile, toucher pour déplier.
 galleryCards.forEach((card, i) => card.addEventListener('mouseenter', () => {if (matchMedia('(hover: hover) and (pointer: fine)').matches) moveGallery(i);}));
-
-// Jemný prostorový pohyb fotografie, bez pohybu na dotykových zařízeních.
-const editorialHero = document.querySelector('.hero-editorial');
-document.querySelector('#hero-preview').addEventListener('click', () => {showSlide(current + 1); schedule();});
-editorialHero.addEventListener('pointermove', event => {
-  if (reduced.matches || event.pointerType !== 'mouse') return;
-  const bounds = editorialHero.getBoundingClientRect();
-  editorialHero.style.setProperty('--hero-x', `${(event.clientX - bounds.left - bounds.width / 2) * .008}px`);
-  editorialHero.style.setProperty('--hero-y', `${(event.clientY - bounds.top - bounds.height / 2) * .008}px`);
-});
-editorialHero.addEventListener('pointerleave', () => {editorialHero.style.setProperty('--hero-x', '0px'); editorialHero.style.setProperty('--hero-y', '0px');});
 
 const appointmentToggle = document.querySelector('#appointment-toggle');
 const appointmentCard = document.querySelector('#appointment-card');

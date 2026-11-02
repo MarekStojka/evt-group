@@ -104,3 +104,6 @@ header nav{font-size:16px;font-weight:600;gap:clamp(18px,1.8vw,34px)}header nav 
 @media(prefers-reduced-motion:reduce){.reference-collapse,.reference-sign,.reference-visual>img{transition:none}.reference-sweep{display:none}}
 
 .reference-playback{justify-content:flex-start}
+
+/* Sortiment sdílí šířku a zarovnání navazujících sekcí. */
+#sortiment.wrap{max-width:1440px;padding-inline:6%}
